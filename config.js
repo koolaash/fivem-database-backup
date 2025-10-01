@@ -15,7 +15,7 @@ const config = {
         host: "localhost",     // MySQL server hostname/IP
         user: "root",         // MySQL username
         password: "",         // MySQL password (leave empty for no password)
-        database: "",         // Target database name for backup
+        database: "",         // Target database name for backup. NOTE : Make sure the database name is in lowercases
     },
 
     // Discord embed styling configuration
