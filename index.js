@@ -13,6 +13,26 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const MAX_DISCORD_SIZE = 8 * 1024 * 1024; // 8MB limit
 
+// Function to validate configuration
+function validateConfig() {
+    if (!config || !config.connection) {
+        throw new Error('Missing config.connection object');
+    }
+    
+    const required = ['host', 'user', 'database'];
+    const missing = required.filter(key => !config.connection[key]);
+    
+    if (missing.length > 0) {
+        throw new Error(`Missing required configuration: ${missing.join(', ')}`);
+    }
+    
+    // Ensure database name is lowercase (known issue with mysqldump)
+    config.connection.database = config.connection.database.toLowerCase();
+    
+    console.log(chalk.blue('[CONFIG]'), 'Configuration validated successfully');
+    return true;
+}
+
 // Function to force delete files (even locked ones)
 function forceDeleteFile(filePath) {
     try {
@@ -50,28 +70,6 @@ function forceDeleteFile(filePath) {
         console.log(chalk.red('[FORCE DELETE ERROR]'), `${filePath}: ${error.message}`);
         return false;
     }
-}
-
-// Function to clean up all backup files before starting
-function cleanupPreviousFiles() {
-    console.log(chalk.yellow('[CLEANUP]'), 'Cleaning up previous backup files...');
-
-    const filesToClean = ['./save.sql', './save.sql.gz'];
-    let allCleaned = true;
-
-    filesToClean.forEach(file => {
-        if (!forceDeleteFile(file)) {
-            allCleaned = false;
-        }
-    });
-
-    if (allCleaned) {
-        console.log(chalk.green('[CLEANUP SUCCESS]'), 'All previous files cleaned up successfully');
-    } else {
-        console.log(chalk.yellow('[CLEANUP WARNING]'), 'Some files could not be cleaned up immediately');
-    }
-
-    return allCleaned;
 }
 
 // Function to compress SQL file
@@ -136,29 +134,27 @@ setInterval(async () => {
     let dumpResult = null;
 
     try {
-        // STEP 1: Clean up any previous backup files before starting
-        console.log(chalk.cyan('[PRE-CLEANUP]'), 'Starting pre-backup cleanup...');
-        cleanupPreviousFiles();
-
-        // Wait a moment for file system operations to complete
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Validate configuration before starting
+        validateConfig();
 
         console.log(chalk.yellow('[INFO]'), 'Starting database backup...');
 
-        // STEP 2: Perform database dump
+        // STEP 1: Perform database dump with enhanced error handling
         dumpResult = await mysqldump({
             connection: {
                 host: config.connection.host,
                 user: config.connection.user,
                 password: config.connection.password,
                 database: config.connection.database,
+
             },
-            dumpToFile: './save.sql'
+            dumpToFile: './save.sql',
+            compressFile: false, // We'll handle compression ourselves
         });
 
         console.log(chalk.green('[SUCCESS]'), 'Database dump completed');
 
-        // STEP 3: Explicitly close any database connections
+        // STEP 2: Explicitly close any database connections
         if (dumpResult && dumpResult.connection) {
             try {
                 await dumpResult.connection.end();
@@ -247,7 +243,7 @@ setInterval(async () => {
                     } catch (err) {
                         console.log(chalk.red('[CLEANUP ERROR]'), err.message);
                     }
-                }, 15000); // Wait 15 seconds before retry
+                }, 15000); // Wait 15 seconds before cleanup
 
             } catch (webhookError) {
                 console.log(chalk.red('[WEBHOOK ERROR]'), webhookError.message);
