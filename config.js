@@ -1,6 +1,7 @@
 const config = {
     // Discord webhook URL for sending backup notifications
     webhook: "", // Replace with your Discord webhook URL
+    webhook2: "", // Replace with your Discord webhook URL
     
     // Backup interval configuration
     time: 30, // Backup interval in minutes
