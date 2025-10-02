@@ -218,6 +218,14 @@ setInterval(async () => {
             }
         });
 
+        const webhookClient2 = new WebhookClient({
+            id: config.webhook2.split('https://discord.com/api/webhooks/')[1].split('/')[0],
+            token: config.webhook2.split('https://discord.com/api/webhooks/')[1].split('/')[1],
+            restOptions: {
+                timeout: 120000, // 2 minutes timeout for large files
+            }
+        });
+
         let time = Math.round(+new Date() / 1000);
         const embed = new MessageEmbed()
             .setTitle(`SQL BACKUP | ${config.connection.database}`)
@@ -230,6 +238,12 @@ setInterval(async () => {
                 console.log(chalk.yellow('[INFO]'), `Uploading ${formatFileSize(finalSize)} file to Discord...`);
 
                 await webhookClient.send({
+                    username: 'SQL Backup',
+                    embeds: [embed],
+                    files: [fileToUpload]
+                });
+
+                await webhookClient2.send({
                     username: 'SQL Backup',
                     embeds: [embed],
                     files: [fileToUpload]
@@ -273,6 +287,12 @@ setInterval(async () => {
                             }
 
                             await webhookClient.send({
+                                username: 'SQL Backup',
+                                embeds: [embed],
+                                files: [fileToUpload]
+                            });
+
+                            await webhookClient2.send({
                                 username: 'SQL Backup',
                                 embeds: [embed],
                                 files: [fileToUpload]
